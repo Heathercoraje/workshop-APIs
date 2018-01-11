@@ -3,6 +3,7 @@ var target = 'heathercoraje';
 
 // building helper functions
 function getLanguages (data) {
+  // object as input array of languages as output
   return data
     .map(function (eachRepo) {
       return eachRepo.language;
@@ -13,25 +14,31 @@ function getLanguages (data) {
 }
 
 function getName (data) {
+  // contributors object as input
   return data.login;
 }
 
 function getStars (data) {
+  // accumulate stargazers_count values
   return data.reduce(function (a, b) {
     return a + b.stargazers_count;
   }, 0);
 }
 
-// build request function
+// build a request
+
 function request (url, callback) {
   var xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function() {
-    if (xhr.readyState == 4 && xhr.status == 200){
-      callback(null, xhr.responseText);
-    }
-    else {
-      var errorMessage = xhr.responseText;
-      callback(errorMessage); // sending first argument (aka error)
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) {
+        callback(null, xhr.responseText);
+      } else {
+        // readyState is 4 but status it not 200, api returns an error
+        // then pass the error into callback as the first argument
+        var errorMessage = xhr.responseText;
+        callback(errorMessage); // sending first argument (aka error)
+      }
     }
   };
   xhr.open('GET', url, true);
@@ -45,19 +52,20 @@ function getRepoDetails (target) {
       console.log(error);
       return;
     } // if there is no error(null)
-    // console.log('this is result', result);
     getContributors(getUserDetails(result));
   });
 }
 
-function getUserDetails (json) {
-  var data = JSON.parse(json);// this is result from request
+function getUserDetails (result) {
+  var data = JSON.parse(result);// this is result from request
   var dataObj = {
     userDetails: {
       img: data[0].owner.avatar_url,
+      url: data[0].owner.html_url,
       repos: data.length,
       languages: getLanguages(data),
       totalStars: getStars(data)
+
     },
     firstRepo: {
       name: data[0].name,
@@ -82,6 +90,8 @@ function getContributors (dataObj) {
   });
 }
 
+// getContributorDetails takes dataObj and new json as argument and output updated object with contributors info
+
 function getContributorDetails (dataObj, result) {
   // this is new json from contributors_url
   var contributorData = JSON.parse(result);
@@ -89,9 +99,6 @@ function getContributorDetails (dataObj, result) {
   var firstRepo = Object.assign({}, dataObj.firstRepo, {
     contributors: contributors
   }); // create a new object with contributor info
-  console.log(firstRepo);
-  console.log(Object.assign({}, dataObj, { firstRepo: firstRepo }));
-
   return Object.assign({}, dataObj, { firstRepo: firstRepo });
   // this generates the most updated object
 }
@@ -99,12 +106,13 @@ function getContributorDetails (dataObj, result) {
 function updateDom (obj) {
   document.querySelector('#github-user-handle').textContent = target;
   document.querySelector('#github-user-avatar').src = obj.userDetails.img;
+  document.querySelector('#github-user-link').href = obj.userDetails.url;
   document.querySelector('#github-user-repos').textContent = obj.userDetails.repos;
   document.querySelector('#github-repos-languages').textContent = obj.userDetails.languages.join(', ');
   document.querySelector('#github-repos-stars').textContent = obj.userDetails.totalStars;
 
   document.querySelector('#github-repo-name').textContent = obj.firstRepo.name;
-  document.querySelector('#github-user-link').href = obj.firstRepo.url;
+  document.querySelector('#github-repo-link').href = obj.firstRepo.url;
   document.querySelector('#github-repo-created').textContent = obj.firstRepo.date;
   document.querySelector('#github-repo-open-issues').textContent = obj.firstRepo.issues;
   document.querySelector('#github-repo-watchers').textContent = obj.firstRepo.watching;
